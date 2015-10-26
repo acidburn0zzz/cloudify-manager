@@ -76,3 +76,32 @@ class Plugin(object):
         self.excluded_wheels = kwargs['excluded_wheels']
         self.supported_py_versions = kwargs['supported_py_versions']
         self.uploaded_at = kwargs['uploaded_at']
+
+
+@swagger.model
+class PaginatedResponse(object):
+    resource_fields = {
+        "pagination": {
+            "offset": fields.Integer,
+            "size": fields.Integer,
+            "total": fields.Integer},
+        "links": {
+            "self": fields.Url,
+            "first": fields.Url,
+            "previous": fields.Url,
+            "next": fields.Url,
+            "last": fields.Url},
+        "item_type": fields.String,
+        "items": fields.List}
+
+    def __init__(self, **kwargs):
+        self.id = kwargs['offset']
+        self.id = kwargs['size']
+        self.id = kwargs['total']
+        self.id = kwargs['self']
+        self.id = kwargs['first']
+        self.id = kwargs['previous']
+        self.id = kwargs['next']
+        self.id = kwargs['last']
+        self.id = kwargs['item_type']
+        self.id = kwargs['items']
