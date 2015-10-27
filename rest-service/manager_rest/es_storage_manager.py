@@ -140,7 +140,8 @@ class ESStorageManager(object):
         return model_class(**fields_data)
 
     @staticmethod
-    def _build_request_body(filters=None, pagination=None, skip_size=False):
+    def _build_request_body(filters=None, pagination=None, skip_size=False,
+                            sort=None, range=None):
         """
         This method is used to create an elasticsearch request based on the
         Query DSL.
@@ -159,10 +160,17 @@ class ESStorageManager(object):
                            keys.
         :param skip_size: If set to `True`, will not add `size` to the
                           body result.
+        :param sort:    A dictionary containing sort keys and their order
+                        ('asc' or 'desc')
+        :param range:   An optional dictionary where keys are fields
+                        and values are the range limits of that field
         :return: An elasticsearch Query DSL body.
         """
-        terms_lst = []
+        mandatory_conditions = []
         body = {}
+        if sort:
+            body['sort'] = map(lambda k: {k: {"order": sort[k]}}, sort)
+
         if pagination:
             if not skip_size:
                 body['size'] = pagination.get('page_size', DEFAULT_SEARCH_SIZE)
@@ -170,15 +178,24 @@ class ESStorageManager(object):
                 body['from'] = pagination['offset']
         elif not skip_size:
             body['size'] = DEFAULT_SEARCH_SIZE
+
         if filters:
+            terms_lst = []
             for key, val in filters.iteritems():
                 filter_type = 'terms' if isinstance(val, list) else 'term'
                 terms_lst.append({filter_type: {key: val}})
+            mandatory_conditions.extend(terms_lst)
+
+        if range:
+            range_lst = [{'range': {k: v} for k, v in range.iteritems()}]
+            mandatory_conditions.extend(range_lst)
+
+        if mandatory_conditions:
             body['query'] = {
                 'filtered': {
                     'filter': {
                         'bool': {
-                            'must':  terms_lst
+                            'must':  mandatory_conditions
                         }
                     }
                 }
