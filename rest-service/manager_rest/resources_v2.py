@@ -254,7 +254,7 @@ class Deployments(resources.Deployments):
         )
     )
     @exceptions_handled
-    @marshal_with(responses_v2.Deployment)
+    @marshal_with(responses_v2.PaginatedResponse)
     @verify_and_create_filters(models.Deployment.fields)
     @paginate
     def get(self, _include=None, filters=None, pagination=None, **kwargs):

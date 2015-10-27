@@ -55,12 +55,7 @@ class Plugin(object):
         'wheels': fields.Raw,
         'excluded_wheels': fields.Raw,
         'supported_py_versions': fields.Raw,
-        'uploaded_at': fields.String,
-    }
-    fields = {'id', 'package_name', 'archive_name', 'package_source',
-              'package_version', 'supported_platform', 'distribution',
-              'distribution_version', 'distribution_release', 'wheels',
-              'excluded_wheels', 'supported_py_versions', 'uploaded_at'}
+        'uploaded_at': fields.String}
 
     def __init__(self, **kwargs):
         self.id = kwargs['id']
@@ -81,27 +76,17 @@ class Plugin(object):
 @swagger.model
 class PaginatedResponse(object):
     resource_fields = {
-        "pagination": {
-            "offset": fields.Integer,
-            "size": fields.Integer,
-            "total": fields.Integer},
-        "links": {
-            "self": fields.Url,
-            "first": fields.Url,
-            "previous": fields.Url,
-            "next": fields.Url,
-            "last": fields.Url},
-        "item_type": fields.String,
-        "items": fields.List}
+        'pagination': fields.Raw,
+        'items': fields.List}
 
     def __init__(self, **kwargs):
-        self.id = kwargs['offset']
-        self.id = kwargs['size']
-        self.id = kwargs['total']
-        self.id = kwargs['self']
-        self.id = kwargs['first']
-        self.id = kwargs['previous']
-        self.id = kwargs['next']
-        self.id = kwargs['last']
-        self.id = kwargs['item_type']
-        self.id = kwargs['items']
+        self.pagination = kwargs['pagination']
+        self.items = self._responsify_list_field(kwargs['items'])
+
+
+
+
+
+
+
+

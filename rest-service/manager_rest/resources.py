@@ -55,6 +55,7 @@ from manager_rest.blueprints_manager import (DslParseException,
                                              get_blueprints_manager,
                                              BlueprintsManager)
 from manager_rest import get_version_data
+from manager_rest.responses_v2 import PaginatedResponse
 
 CONVENTION_APPLICATION_BLUEPRINT_FILE = 'blueprint.yaml'
 
@@ -142,7 +143,9 @@ class marshal_with(object):
         return wrapper
 
     def wrap_with_response_object(self, data):
-        if isinstance(data, dict):
+        if isinstance(self.response_class, PaginatedResponse):
+            return "{}"
+        elif isinstance(data, dict):
             return self.response_class(**data)
         elif isinstance(data, list):
             return map(self.wrap_with_response_object, data)
