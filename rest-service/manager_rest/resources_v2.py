@@ -41,6 +41,37 @@ from manager_rest.blueprints_manager import get_blueprints_manager
 from manager_rest.blueprints_manager import \
     TRANSIENT_WORKERS_MODE_ENABLED_DEFAULT
 
+from manager_rest.es_storage_manager import ESStorageManager
+
+import warnings
+
+
+def create_user_filters(func):
+    """
+    Decorator for converting request user args to a filters dict
+    this also supports multiple value args
+    """
+    def create_user_filters_dec(*args, **kw):
+        request_args = request.args.to_dict(flat=False)
+        user_filters = \
+            {k: v for k, v in
+             request_args.iteritems() if not k.startswith('_')}
+        return func(filters=user_filters, *args, **kw)
+    return create_user_filters_dec
+
+
+def sortable(func):
+    """
+    Decorator for enabling sort
+    """
+    def create_sort_params(*args, **kw):
+        sort_arg = request.args.getlist("_sort")
+        sort_params = \
+            {k.lstrip('-+'): "desc" if k[0] == '-' else "asc"
+             for k in sort_arg}
+        return func(sort=sort_params, *args, **kw)
+    return create_sort_params
+
 
 def paginate(func):
     """
@@ -616,6 +647,67 @@ class PluginsId(SecuredResource):
         shutil.rmtree(os.path.dirname(archive_path), ignore_errors=True)
         get_storage_manager().delete_plugin(plugin_id)
         return plugin
+
+
+class Events(resources.Events):
+
+    def __init__(self):
+        self._storage_manager = ESStorageManager
+
+    def _query_events(self):
+        warnings.warn('method is obsolete in Resources v2', DeprecationWarning)
+
+    def _build_query(self, filters, pagination, sort, _include_logs=False):
+        # sort by @timestamp instead of timestamp
+        if 'timestamp' in sort:
+            sort['@timestamp'] = sort['timestamp']
+            del sort['timestamp']
+
+        # include logs in search?
+        filters['type'] = ['cloudify_event']
+        if _include_logs:
+            filters['type'].append('cloudify_log')
+
+        _context_fields = ["blueprint_id",
+                           "deployment_id",
+                           "execution_id",
+                           "node_id",
+                           "node_instance_id"]
+
+        # append 'context.' prefix to context fields
+        for filter in filters:
+            if filter in _context_fields:
+                filters['context.' + filter] = filters[filter]
+            del filters[filter]
+
+        return self._storage_manager._build_request_body(filters=filters,
+                                                         pagination=pagination,
+                                                         sort=sort)
+
+    def _search_storage(self, query):
+        es = resources._elasticsearch_connection()
+        return es.search(index=self._set_index_name(),
+                         body=query)
+
+    @swagger.operation(
+        responseclass='List[{0}]'.format(responses_v2.Event.__name__),
+        nickname="list events",
+        notes='Returns a list of events for optionally provided filters'
+    )
+    @exceptions_handled
+    @create_user_filters
+    @paginate
+    @sortable
+    def get(self, _include=None, _include_logs=False,
+            filters=None, pagination=None, sort=None, **kwargs):
+        """
+        List events
+        """
+        query = self._build_query(filters=filters,
+                                  pagination=pagination,
+                                  sort=sort,
+                                  _include_logs=_include_logs)
+        return self._search_storage(query)
 
 
 def _get_plugin_archive_path(plugin_id, archive_name):
