@@ -143,8 +143,8 @@ class marshal_with(object):
         return wrapper
 
     def wrap_with_response_object(self, data):
-        if isinstance(self.response_class, PaginatedResponse):
-            return "{}"
+        if self.response_class == PaginatedResponse:
+            pass
         elif isinstance(data, dict):
             return self.response_class(**data)
         elif isinstance(data, list):
