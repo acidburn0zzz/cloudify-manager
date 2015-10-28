@@ -145,10 +145,11 @@ class marshal_with(object):
     def wrap_with_response_object(self, data):
         if self.response_class == PaginatedResponse:
             self.response_class = list
-            items = self.wrap_with_response_object(data)
+            items = self.paginated_wrap_with_response_object(data)
             pagination = {}
             response = PaginatedResponse(items=items,
                                          pagination=pagination)
+            self.response_class = PaginatedResponse
             return response
         elif isinstance(data, dict):
             return self.response_class(**data)
@@ -156,6 +157,16 @@ class marshal_with(object):
             return map(self.wrap_with_response_object, data)
         elif isinstance(data, models.SerializableObject):
             return self.wrap_with_response_object(data.to_dict())
+        raise RuntimeError('Unexpected response data type {0}'.format(
+            type(data)))
+
+    def paginated_wrap_with_response_object(self, data):
+        if isinstance(data, dict):
+            return self.response_class(**data)
+        elif isinstance(data, list):
+            return map(self.paginated_wrap_with_response_object, data)
+        elif isinstance(data, models.SerializableObject):
+            return self.paginated_wrap_with_response_object(data.to_dict())
         raise RuntimeError('Unexpected response data type {0}'.format(
             type(data)))
 
