@@ -13,6 +13,7 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+import copy
 
 from cloudify import celery
 from cloudify.decorators import workflow
@@ -34,6 +35,7 @@ def create(ctx, **kwargs):
     sequence = graph.sequence()
 
     is_transient_workers = _is_transient_deployment_workers_mode()
+    process_management_prop = {'start_on_boot': not is_transient_workers}
 
     deployment_plugins = kwargs['deployment_plugins_to_install']
 
@@ -46,16 +48,22 @@ def create(ctx, **kwargs):
                               workflow_plugins)
 
     # installing the operations worker
+    operations_worker_payload = {
+        'cloudify_agent': {'process_management': process_management_prop}
+    }
     sequence.add(
         ctx.send_event('Creating deployment operations worker'),
         ctx.execute_task(
-            task_name='cloudify_agent.installer.operations.create'),
+            task_name='cloudify_agent.installer.operations.create',
+            kwargs=operations_worker_payload),
         ctx.send_event('Configuring deployment operations worker'),
         ctx.execute_task(
-            task_name='cloudify_agent.installer.operations.configure'),
+            task_name='cloudify_agent.installer.operations.configure',
+            kwargs=operations_worker_payload),
         ctx.send_event('Starting deployment operations worker'),
         ctx.execute_task(
-            task_name='cloudify_agent.installer.operations.start')
+            task_name='cloudify_agent.installer.operations.start',
+            kwargs=operations_worker_payload),
     )
 
     if deployment_plugins:
@@ -79,19 +87,22 @@ def create(ctx, **kwargs):
                 task_name='cloudify_agent.installer.operations.stop'))
 
     # installing the workflows worker
+    workflows_worker_payload = copy.deepcopy(WORKFLOWS_WORKER_PAYLOAD)
+    workflows_worker_payload[
+        'cloudify_agent']['process_management'] = process_management_prop
     sequence.add(
         ctx.send_event('Creating deployment workflows worker'),
         ctx.execute_task(
             task_name='cloudify_agent.installer.operations.create',
-            kwargs=WORKFLOWS_WORKER_PAYLOAD),
+            kwargs=workflows_worker_payload),
         ctx.send_event('Configuring deployment workflows worker'),
         ctx.execute_task(
             task_name='cloudify_agent.installer.operations.configure',
-            kwargs=WORKFLOWS_WORKER_PAYLOAD),
+            kwargs=workflows_worker_payload),
         ctx.send_event('Starting deployment workflows worker'),
         ctx.execute_task(
             task_name='cloudify_agent.installer.operations.start',
-            kwargs=WORKFLOWS_WORKER_PAYLOAD))
+            kwargs=workflows_worker_payload))
 
     if workflow_plugins:
         sequence.add(
@@ -106,14 +117,14 @@ def create(ctx, **kwargs):
             ctx.execute_task(
                 task_name='cloudify_agent.installer.operations.restart',
                 send_task_events=False,
-                kwargs=WORKFLOWS_WORKER_PAYLOAD))
+                kwargs=workflows_worker_payload))
 
     if is_transient_workers:
         sequence.add(
             ctx.send_event('Stopping deployment workflows worker'),
             ctx.execute_task(
                 task_name='cloudify_agent.installer.operations.stop',
-                kwargs=WORKFLOWS_WORKER_PAYLOAD))
+                kwargs=workflows_worker_payload))
 
     # Start deployment policy engine core
     sequence.add(
