@@ -141,7 +141,7 @@ class ESStorageManager(object):
 
     @staticmethod
     def _build_request_body(filters=None, pagination=None, skip_size=False,
-                            sort=None, range=None):
+                            sort=None, range_filters=None):
         """
         This method is used to create an elasticsearch request based on the
         Query DSL.
@@ -162,10 +162,15 @@ class ESStorageManager(object):
                           body result.
         :param sort:    A dictionary containing sort keys and their order
                         ('asc' or 'desc')
-        :param range:   An optional dictionary where keys are fields
+        :param range_filters:   An optional dictionary where keys are fields
                         and values are the range limits of that field
         :return: An elasticsearch Query DSL body.
         """
+        def _build_query_match_condition(k, v):
+            return {"query":
+                    {"match": {k: {"query": v, "operator": "and"}}}
+                    }
+
         mandatory_conditions = []
         body = {}
         if sort:
@@ -180,22 +185,29 @@ class ESStorageManager(object):
             body['size'] = DEFAULT_SEARCH_SIZE
 
         if filters:
-            terms_lst = []
+            filter_conditions = []
             for key, val in filters.iteritems():
-                filter_type = 'terms' if isinstance(val, list) else 'term'
-                terms_lst.append({filter_type: {key: val}})
-            mandatory_conditions.extend(terms_lst)
+                if '.' in key:
+                    # nested objects require special care...
+                    # TODO: try to replace query_match with filter_term
+                    query_condition = _build_query_match_condition(key, val)
+                    filter_conditions.append(query_condition)
+                else:
+                    filter_type = 'terms' if isinstance(val, list) else 'term'
+                    filter_conditions.append({filter_type: {key: val}})
+            mandatory_conditions.extend(filter_conditions)
 
-        if range:
-            range_lst = [{'range': {k: v} for k, v in range.iteritems()}]
-            mandatory_conditions.extend(range_lst)
+        if range_filters:
+            range_conditions = \
+                [{'range': {k: v} for k, v in range_filters.iteritems()}]
+            mandatory_conditions.extend(range_conditions)
 
         if mandatory_conditions:
             body['query'] = {
                 'filtered': {
                     'filter': {
                         'bool': {
-                            'must':  mandatory_conditions
+                            'must': mandatory_conditions
                         }
                     }
                 }
