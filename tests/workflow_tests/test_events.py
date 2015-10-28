@@ -47,8 +47,9 @@ class EventsTest(TestCase):
             self._put_two_deployments()
 
     def test_connection(self):
-            filters = {'deployment_id': self.first_deployment_id}
-            self.client.events.list(**filters)
+        filters = {'deployment_id': self.first_deployment_id}
+        res = self.client.events.list(**filters)
+        self.assertGreater(len(res['hits']['hits']), 0)
 
     def _put_two_deployments(self):
         dsl_path = resource("dsl/deployment_modification_operations.yaml")
