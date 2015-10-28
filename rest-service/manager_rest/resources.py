@@ -144,7 +144,12 @@ class marshal_with(object):
 
     def wrap_with_response_object(self, data):
         if self.response_class == PaginatedResponse:
-            pass
+            self.response_class = list
+            items = self.wrap_with_response_object(data)
+            pagination = {}
+            response = PaginatedResponse(items=items,
+                                         pagination=pagination)
+            return response
         elif isinstance(data, dict):
             return self.response_class(**data)
         elif isinstance(data, list):
