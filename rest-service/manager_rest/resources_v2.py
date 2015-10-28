@@ -668,17 +668,17 @@ class Events(resources.Events):
         if _include_logs:
             filters['type'].append('cloudify_log')
 
-        _context_fields = ["blueprint_id",
-                           "deployment_id",
-                           "execution_id",
-                           "node_id",
-                           "node_instance_id"]
+        _ctx_fields = ["blueprint_id",
+                       "deployment_id",
+                       "execution_id",
+                       "node_id",
+                       "node_instance_id"]
 
         # append 'context.' prefix to context fields
-        for filter in filters:
-            if filter in _context_fields:
-                filters['context.' + filter] = filters[filter]
-            del filters[filter]
+        for ctx_field in _ctx_fields:
+            if ctx_field in filters:
+                filters['context.' + ctx_field] = filters[ctx_field]
+                del filters[ctx_field]
 
         return self._storage_manager._build_request_body(filters=filters,
                                                          pagination=pagination,
