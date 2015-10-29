@@ -657,7 +657,11 @@ class Events(resources.Events):
     def _query_events(self):
         warnings.warn('method is obsolete in Resources v2', DeprecationWarning)
 
-    def _build_query(self, filters, pagination, sort, _include_logs=False):
+    def _is_include_logs_requested(self):
+        return \
+            '_include_logs' in request.args and request.args['_include_logs']
+
+    def _build_query(self, filters, pagination, sort, include_logs=False):
         # sort by @timestamp instead of timestamp
         if 'timestamp' in sort:
             sort['@timestamp'] = sort['timestamp']
@@ -665,7 +669,7 @@ class Events(resources.Events):
 
         # include logs in search?
         filters['type'] = ['cloudify_event']
-        if _include_logs:
+        if include_logs:
             filters['type'].append('cloudify_log')
 
         # append 'context.' prefix to context fields
@@ -693,15 +697,16 @@ class Events(resources.Events):
     @create_user_filters
     @paginate
     @sortable
-    def get(self, _include=None, _include_logs=False,
-            filters=None, pagination=None, sort=None, **kwargs):
+    def get(self, _include=None, filters=None,
+            pagination=None, sort=None, **kwargs):
         """
         List events
         """
+        include_logs = self._is_include_logs_requested()
         query = self._build_query(filters=filters,
                                   pagination=pagination,
                                   sort=sort,
-                                  _include_logs=_include_logs)
+                                  include_logs=include_logs)
         search_result = self._search_storage(query)
         events = map(lambda hit: hit['_source'], search_result['hits']['hits'])
         return events
