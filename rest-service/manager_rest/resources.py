@@ -136,22 +136,38 @@ class marshal_with(object):
                 data, code, headers = unpack(response)
                 data = self.wrap_with_response_object(data)
                 return marshal(data, fields_to_include), code, headers
+            elif self.response_class == PaginatedResponse:
+                response = self.paginated_wrap_with_response_object(response)
+                return marshal({'items': response.items, 'pagination': response.pagination}, fields_to_include)
             else:
                 response = self.wrap_with_response_object(response)
                 return marshal(response, fields_to_include)
 
         return wrapper
 
+    # @staticmethod
+    # def todict(obj, classkey=None):
+    #     if isinstance(obj, dict):
+    #         data = {}
+    #         for (k, v) in obj.items():
+    #             data[k] = todict(v, classkey)
+    #         return data
+    #     elif hasattr(obj, "_ast"):
+    #         return todict(obj._ast())
+    #     elif hasattr(obj, "__iter__"):
+    #         return [todict(v, classkey) for v in obj]
+    #     elif hasattr(obj, "__dict__"):
+    #         data = dict([(key, todict(value, classkey))
+    #                      for key, value in obj.__dict__.iteritems()
+    #                      if not callable(value) and not key.startswith('_')])
+    #         if classkey is not None and hasattr(obj, "__class__"):
+    #             data[classkey] = obj.__class__.__name__
+    #         return data
+    #     else:
+    #         return obj
+
     def wrap_with_response_object(self, data):
-        if self.response_class == PaginatedResponse:
-            self.response_class = list
-            items = self.paginated_wrap_with_response_object(data)
-            pagination = {}
-            response = PaginatedResponse(items=items,
-                                         pagination=pagination)
-            self.response_class = PaginatedResponse
-            return response
-        elif isinstance(data, dict):
+        if isinstance(data, dict):
             return self.response_class(**data)
         elif isinstance(data, list):
             return map(self.wrap_with_response_object, data)
@@ -161,14 +177,19 @@ class marshal_with(object):
             type(data)))
 
     def paginated_wrap_with_response_object(self, data):
-        if isinstance(data, dict):
-            return self.response_class(**data)
-        elif isinstance(data, list):
-            return map(self.paginated_wrap_with_response_object, data)
-        elif isinstance(data, models.SerializableObject):
-            return self.paginated_wrap_with_response_object(data.to_dict())
-        raise RuntimeError('Unexpected response data type {0}'.format(
-            type(data)))
+        res = PaginatedResponse(pagination=dict(), items=[])
+        for item in data:
+            res.items.append(item.to_dict())
+        return res
+
+        # if isinstance(data, dict):
+        #     return self.response_class.resource_fields.items().append(data)
+        # elif isinstance(data, list):
+        #     return map(self.paginated_wrap_with_response_object, data)
+        # elif isinstance(data, models.SerializableObject):
+        #     return self.paginated_wrap_with_response_object(data.to_dict())
+        # raise RuntimeError('Unexpected response data type {0}'.format(
+        #     type(data)))
 
 
 def verify_json_content_type():

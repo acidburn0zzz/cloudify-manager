@@ -77,11 +77,11 @@ class Plugin(object):
 class PaginatedResponse(object):
     resource_fields = {
         'pagination': fields.Raw,
-        'items': fields.List}
+        'items': fields.Raw}
 
     def __init__(self, **kwargs):
         self.pagination = kwargs['pagination']
-        self.items = self._responsify_list_field(kwargs['items'])
+        self.items = kwargs['items']
 
 
 
