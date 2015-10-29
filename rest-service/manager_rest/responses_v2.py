@@ -77,7 +77,7 @@ class Plugin(object):
 class PaginatedResponse(object):
     resource_fields = {
         'pagination': fields.Raw,
-        'items': fields.Raw}
+        'items': fields.List(fields.Raw)}
 
     def __init__(self, **kwargs):
         self.pagination = kwargs['pagination']
