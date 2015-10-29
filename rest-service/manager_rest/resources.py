@@ -132,10 +132,10 @@ class marshal_with(object):
 
             response = f(*args, **kwargs)
 
-            if isinstance(response, list):
-                response = self.wrap_with_paginated_response_object(response)
-                return marshal(response, fields_to_include)
-            elif isinstance(response, tuple):
+            # if isinstance(response, PaginatedResponse):
+            #     response = self.wrap_with_paginated_response_object(response)
+            #     return marshal(response, fields_to_include)
+            if isinstance(response, tuple):
                 data, code, headers = unpack(response)
                 data = self.wrap_with_response_object(data)
                 return marshal(data, fields_to_include), code, headers
@@ -152,14 +152,16 @@ class marshal_with(object):
             return map(self.wrap_with_response_object, data)
         elif isinstance(data, models.SerializableObject):
             return self.wrap_with_response_object(data.to_dict())
+        elif isinstance(data, PaginatedResponse):
+            return self.wrap_with_paginated_response_object(data)
         raise RuntimeError('Unexpected response data type {0}'.format(
             type(data)))
 
     def wrap_with_paginated_response_object(self, data):
         response = PaginatedResponse(pagination=dict(), items=[])
-        for item in data:
-            item = self.wrap_with_response_object(item)
+        for item in data.items:
             response.items.append(item.to_dict())
+        response.pagination = data.pagination
         return response
 
 

@@ -54,7 +54,9 @@ def paginate(func):
             pagination_params["offset"] = int(offset)
         if offset:
             pagination_params["page_size"] = int(page_size)
-        return func(pagination=pagination_params, *args, **kw)
+        return responses_v2.PaginatedResponse(
+            items=func(pagination=pagination_params, *args, **kw),
+            pagination=dict())
     return verify_and_create_pagination_params
 
 
