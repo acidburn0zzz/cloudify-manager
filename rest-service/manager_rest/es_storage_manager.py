@@ -27,6 +27,7 @@ from manager_rest.models import (BlueprintState,
                                  DeploymentNodeInstance,
                                  ProviderContext,
                                  Plugin)
+from manager_rest.elasticsearch_utils import ElasticsearchUtils
 
 STORAGE_INDEX_NAME = 'cloudify_storage'
 NODE_TYPE = 'node'
@@ -39,7 +40,6 @@ EXECUTION_TYPE = 'execution'
 PROVIDER_CONTEXT_TYPE = 'provider_context'
 PROVIDER_CONTEXT_ID = 'CONTEXT'
 
-DEFAULT_SEARCH_SIZE = 10000
 
 MUTATE_PARAMS = {
     'refresh': True
@@ -139,81 +139,6 @@ class ESStorageManager(object):
                 fields_data[field] = None
         return model_class(**fields_data)
 
-    @staticmethod
-    def _build_request_body(filters=None, pagination=None, skip_size=False,
-                            sort=None, range_filters=None):
-        """
-        This method is used to create an elasticsearch request based on the
-        Query DSL.
-        It performs two actions:
-        1. Based on the `filters` param passed to it, it builds a filter based
-        query to only return elements that match the provided filters.
-        Filters are faster than queries as they are cached and don't
-        influence the score.
-        2. Based on the `pagination` param, it sets the `size` and `from`
-        parameters of the built query to make use of elasticsearch paging
-        capabilities.
-
-        :param filters: A dictionary containing filter keys and their expected
-                        value.
-        :param pagination: A dictionary with optional `page_size` and `offset`
-                           keys.
-        :param skip_size: If set to `True`, will not add `size` to the
-                          body result.
-        :param sort:    A dictionary containing sort keys and their order
-                        ('asc' or 'desc')
-        :param range_filters:   An optional dictionary where keys are fields
-                        and values are the range limits of that field
-        :return: An elasticsearch Query DSL body.
-        """
-        def _build_query_match_condition(k, v):
-            return {"query":
-                    {"match": {k: {"query": v, "operator": "and"}}}
-                    }
-
-        mandatory_conditions = []
-        body = {}
-        if sort:
-            body['sort'] = map(lambda k: {k: {"order": sort[k]}}, sort)
-
-        if pagination:
-            if not skip_size:
-                body['size'] = pagination.get('page_size', DEFAULT_SEARCH_SIZE)
-            if 'offset' in pagination:
-                body['from'] = pagination['offset']
-        elif not skip_size:
-            body['size'] = DEFAULT_SEARCH_SIZE
-
-        if filters:
-            filter_conditions = []
-            for key, val in filters.iteritems():
-                if '.' in key:
-                    # nested objects require special care...
-                    # TODO: try to replace query_match with filter_term
-                    query_condition = _build_query_match_condition(key, val)
-                    filter_conditions.append(query_condition)
-                else:
-                    filter_type = 'terms' if isinstance(val, list) else 'term'
-                    filter_conditions.append({filter_type: {key: val}})
-            mandatory_conditions.extend(filter_conditions)
-
-        if range_filters:
-            range_conditions = \
-                [{'range': {k: v} for k, v in range_filters.iteritems()}]
-            mandatory_conditions.extend(range_conditions)
-
-        if mandatory_conditions:
-            body['query'] = {
-                'filtered': {
-                    'filter': {
-                        'bool': {
-                            'must': mandatory_conditions
-                        }
-                    }
-                }
-            }
-        return body
-
     def blueprints_list(self, include=None, filters=None, pagination=None):
         return self._get_items_list(BLUEPRINT_TYPE,
                                     BlueprintState,
@@ -280,8 +205,8 @@ class ESStorageManager(object):
 
     def _get_items_list(self, doc_type, model_class, include=None,
                         filters=None, pagination=None):
-        body = self._build_request_body(filters=filters,
-                                        pagination=pagination)
+        body = ElasticsearchUtils.build_request_body(filters=filters,
+                                                     pagination=pagination)
         return self._list_docs(doc_type,
                                model_class,
                                body=body,
@@ -376,9 +301,10 @@ class ESStorageManager(object):
                 'Provider Context not found')
 
     def delete_deployment(self, deployment_id):
-        query = self._build_request_body(filters={'deployment_id':
-                                                  deployment_id},
-                                         skip_size=True)
+        query = ElasticsearchUtils.build_request_body(
+            filters={'deployment_id': deployment_id},
+            skip_size=True
+        )
         self._delete_doc_by_query(EXECUTION_TYPE, query)
         self._delete_doc_by_query(NODE_INSTANCE_TYPE, query)
         self._delete_doc_by_query(NODE_TYPE, query)

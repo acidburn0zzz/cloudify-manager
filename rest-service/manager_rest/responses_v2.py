@@ -97,6 +97,7 @@ class Event(object):
 
     resource_fields = {
         '@timestamp': fields.DateTime,
+        'timestamp': fields.String,
         'type': fields.String,
         'context': fields.Nested(ctx_fields),
         'message': fields.Nested(_message_fields)

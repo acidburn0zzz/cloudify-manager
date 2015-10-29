@@ -45,10 +45,7 @@ class EventsTest(TestCase):
         super(EventsTest, self).setUp()
         from testenv import testenv_instance
         testenv_instance.handle_logs = self._es_log_handler
-        self.first_deployment_id, self.first_deployment_blueprint_id, \
-            self.sec_deployment_id, self.sec_deployment_blueprint_id = \
-            self._put_two_deployments()
-        self._run_deployment()
+        self.deployment_id = self._create_deployment()
 
     def tearDown(self):
         ElasticSearchProcess.remove_log_indices()
@@ -61,7 +58,9 @@ class EventsTest(TestCase):
                              "Expected events only")
 
     def test_filter(self):
-        deployment_id = self.first_deployment_id
+        deployment_id = self.deployment_id
+        # create another deployment to test correct filtering
+        self._create_deployment()
         filters = {'deployment_id': deployment_id}
         events = self.client.events.list(**filters)
         self.assertGreater(len(events), 0, "No events")
@@ -91,15 +90,9 @@ class EventsTest(TestCase):
                 break
         self.assertTrue(is_log_found, "Expected logs to be found")
 
-    def _run_deployment(self):
+    def _create_deployment(self):
         dsl_path = \
             resource("dsl/"
-                     "basic_with_deployment_plugin_and_workflow_plugin.yaml")
-        deploy(dsl_path)
-
-    def _put_two_deployments(self):
-        dsl_path = resource("dsl/deployment_modification_operations.yaml")
-        first_deployment, _ = deploy(dsl_path)
-        sec_deployment, _ = deploy(dsl_path)
-        return first_deployment.id, first_deployment.blueprint_id, \
-            sec_deployment.id, sec_deployment.blueprint_id
+                     "basic_event_and_log.yaml")
+        test_deployment, _ = deploy(dsl_path)
+        return test_deployment.id

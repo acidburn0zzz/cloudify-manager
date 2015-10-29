@@ -41,23 +41,9 @@ from manager_rest.blueprints_manager import get_blueprints_manager
 from manager_rest.blueprints_manager import \
     TRANSIENT_WORKERS_MODE_ENABLED_DEFAULT
 
-from manager_rest.es_storage_manager import ESStorageManager
+from manager_rest.elasticsearch_utils import ElasticsearchUtils
 
 import warnings
-
-
-def create_user_filters(func):
-    """
-    Decorator for converting request user args to a filters dict
-    this also supports multiple value args
-    """
-    def create_user_filters_dec(*args, **kw):
-        request_args = request.args.to_dict(flat=False)
-        user_filters = \
-            {k: v for k, v in
-             request_args.iteritems() if not k.startswith('_')}
-        return func(filters=user_filters, *args, **kw)
-    return create_user_filters_dec
 
 
 def sortable(func):
@@ -87,6 +73,20 @@ def paginate(func):
             pagination_params["page_size"] = int(page_size)
         return func(pagination=pagination_params, *args, **kw)
     return verify_and_create_pagination_params
+
+
+def create_user_filters(func):
+    """
+    Decorator for converting request user args to a filters dict
+    this also supports multiple value args
+    """
+    def create_user_filters_dec(*args, **kw):
+        request_args = request.args.to_dict(flat=False)
+        user_filters = \
+            {k: v for k, v in
+             request_args.iteritems() if not k.startswith('_')}
+        return func(filters=user_filters, *args, **kw)
+    return create_user_filters_dec
 
 
 def verify_and_create_filters(fields):
@@ -651,9 +651,6 @@ class PluginsId(SecuredResource):
 
 class Events(resources.Events):
 
-    def __init__(self):
-        self._storage_manager = ESStorageManager
-
     def _query_events(self):
         warnings.warn('method is obsolete in Resources v2', DeprecationWarning)
 
@@ -678,9 +675,9 @@ class Events(resources.Events):
                 filters['context.' + ctx_field] = filters[ctx_field]
                 del filters[ctx_field]
 
-        return self._storage_manager._build_request_body(filters=filters,
-                                                         pagination=pagination,
-                                                         sort=sort)
+        return ElasticsearchUtils.build_request_body(filters=filters,
+                                                     pagination=pagination,
+                                                     sort=sort)
 
     def _search_storage(self, query):
         es = resources._elasticsearch_connection()
