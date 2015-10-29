@@ -19,6 +19,8 @@ from elasticsearch import Elasticsearch
 from testenv.utils import get_resource as resource
 from testenv.utils import deploy_application as deploy
 from testenv import TestCase
+from testenv import ElasticSearchProcess
+from testenv.constants import LOG_INDICES_PREFIX
 
 
 class EventsTest(TestCase):
@@ -29,8 +31,9 @@ class EventsTest(TestCase):
         es_client = Elasticsearch()
         doc_type = event['type']
 
-        # simulate logstash index
-        index = 'logstash-{0}'.format(timestamp.strftime('%Y.%m.%d'))
+        # simulate log index
+        index = '{0}{1}'.format(LOG_INDICES_PREFIX,
+                                timestamp.strftime('%Y.%m.%d'))
 
         res = es_client.index(index=index,
                               doc_type=doc_type,
@@ -45,6 +48,10 @@ class EventsTest(TestCase):
         self.first_deployment_id, self.first_deployment_blueprint_id, \
             self.sec_deployment_id, self.sec_deployment_blueprint_id = \
             self._put_two_deployments()
+
+    def tearDown(self):
+        ElasticSearchProcess.remove_log_indices()
+        super(EventsTest, self).tearDown()
 
     def test_exclude_logs(self):
         events = self.client.events.list()
@@ -72,7 +79,7 @@ class EventsTest(TestCase):
                                  .format(_include, event.keys()))
 
     def test_include_logs(self):
-        events = self.client.events.list()
+        events = self.client.events.list(_include_logs=True)
         is_log_found = False
         for event in events:
             if event['type'] == 'cloudify_log':
