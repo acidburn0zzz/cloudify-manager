@@ -158,7 +158,6 @@ class marshal_with(object):
     def wrap_with_paginated_response_object(self, data):
         response = PaginatedResponse(pagination=dict(), items=[])
         for item in data:
-            item = self.wrap_with_response_object(item)
             response.items.append(item.to_dict())
         return response
 
