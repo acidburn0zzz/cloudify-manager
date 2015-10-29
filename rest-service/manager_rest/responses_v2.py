@@ -76,3 +76,34 @@ class Plugin(object):
         self.excluded_wheels = kwargs['excluded_wheels']
         self.supported_py_versions = kwargs['supported_py_versions']
         self.uploaded_at = kwargs['uploaded_at']
+
+
+@swagger.model
+class Event(object):
+
+    ctx_fields = {
+        'blueprint_id': fields.String,
+        'deployment_id': fields.String,
+        'execution_id': fields.String,
+        'node_id': fields.String,
+        'node_instance_id': fields.String,
+        'workflow_id': fields.String
+    }
+
+    _message_fields = {
+        'text': fields.String,
+        'arguments': fields.String
+    }
+
+    resource_fields = {
+        '@timestamp': fields.DateTime,
+        'type': fields.String,
+        'context': fields.Nested(ctx_fields),
+        'message': fields.Nested(_message_fields)
+    }
+
+    def __init__(self, **kwargs):
+        self.timestamp = kwargs['timestamp']
+        self.type = kwargs['type']
+        self.context = kwargs['context']
+        self.message = kwargs['message']
