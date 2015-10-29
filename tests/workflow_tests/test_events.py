@@ -48,6 +48,7 @@ class EventsTest(TestCase):
         self.first_deployment_id, self.first_deployment_blueprint_id, \
             self.sec_deployment_id, self.sec_deployment_blueprint_id = \
             self._put_two_deployments()
+        self._run_deployment()
 
     def tearDown(self):
         ElasticSearchProcess.remove_log_indices()
@@ -63,6 +64,7 @@ class EventsTest(TestCase):
         deployment_id = self.first_deployment_id
         filters = {'deployment_id': deployment_id}
         events = self.client.events.list(**filters)
+        self.assertGreater(len(events), 0, "No events")
         for event in events:
             self.assertEqual(event['context']['deployment_id'],
                              deployment_id,
@@ -72,6 +74,7 @@ class EventsTest(TestCase):
     def test_include_option(self):
         _include = ['message', 'type']
         events = self.client.events.list(_include=_include)
+        self.assertGreater(len(events), 0, "No events")
         for event in events:
             self.assertListEqual(_include, event.keys(),
                                  "Expected only the following fields: {0},"
@@ -80,12 +83,19 @@ class EventsTest(TestCase):
 
     def test_include_logs(self):
         events = self.client.events.list(_include_logs=True)
+        self.assertGreater(len(events), 0, "No events")
         is_log_found = False
         for event in events:
             if event['type'] == 'cloudify_log':
                 is_log_found = True
                 break
         self.assertTrue(is_log_found, "Expected logs to be found")
+
+    def _run_deployment(self):
+        dsl_path = \
+            resource("dsl/"
+                     "basic_with_deployment_plugin_and_workflow_plugin.yaml")
+        deploy(dsl_path)
 
     def _put_two_deployments(self):
         dsl_path = resource("dsl/deployment_modification_operations.yaml")
