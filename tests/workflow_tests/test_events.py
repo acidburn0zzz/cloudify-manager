@@ -57,6 +57,15 @@ class EventsTest(TestCase):
             self.assertEqual(event['type'], 'cloudify_event',
                              "Expected events only")
 
+    def test_sorted_events(self):
+        events = self.client.events.list(_sort='-execution_id')
+        self.assertGreater(len(events), 0, "No events")
+        prev_execution_id = events[0]['context']['execution_id']
+        for event in events:
+            current_execution_id = event['context']['execution_id']
+            self.assertLessEqual(current_execution_id, prev_execution_id)
+            prev_execution_id = current_execution_id
+
     def test_filter(self):
         deployment_id = self.deployment_id
         # create another deployment to test correct filtering
