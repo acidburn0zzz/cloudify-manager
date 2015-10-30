@@ -58,13 +58,11 @@ class EventsTest(TestCase):
                              "Expected events only")
 
     def test_sorted_events(self):
-        events = self.client.events.list(_sort='-execution_id')
+        events = self.client.events.list(_sort='-timestamp')
         self.assertGreater(len(events), 0, "No events")
-        prev_execution_id = events[0]['context']['execution_id']
-        for event in events:
-            current_execution_id = event['context']['execution_id']
-            self.assertLessEqual(current_execution_id, prev_execution_id)
-            prev_execution_id = current_execution_id
+        sorted_events = \
+            sorted(events, key=lambda x: x.get('timestamp'), reverse=True)
+        self.assertListEqual(events, sorted_events)
 
     def test_filter(self):
         deployment_id = self.deployment_id
