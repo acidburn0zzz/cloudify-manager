@@ -79,6 +79,13 @@ class EventsTest(TestCase):
                              "Expected only events related to"
                              " deployment id {0}".format(deployment_id))
 
+    def test_search_event_message(self):
+        message = 'sending'
+        events = self.client.events.list(message=message)
+        self.assertGreater(len(events), 0, "No events")
+        for event in events:
+            self.assertIn(message.lower(), event['message']['text'].lower())
+
     def test_include_option(self):
         _include = ['message', 'type']
         events = self.client.events.list(_include=_include)
