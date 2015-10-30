@@ -661,8 +661,7 @@ class Events(resources.Events):
     def _build_query(self, filters, pagination, sort, include_logs=False):
         # sort by @timestamp instead of timestamp
         if 'timestamp' in sort:
-            sort['@timestamp'] = sort['timestamp']
-            del sort['timestamp']
+            sort['@timestamp'] = sort.pop('timestamp')
 
         # include logs in search?
         filters['type'] = ['cloudify_event']
@@ -672,8 +671,7 @@ class Events(resources.Events):
         # append 'context.' prefix to context fields
         for ctx_field in responses_v2.Event.ctx_fields:
             if ctx_field in filters:
-                filters['context.' + ctx_field] = filters[ctx_field]
-                del filters[ctx_field]
+                filters['context.' + ctx_field] = filters.pop(ctx_field)
 
         return ElasticsearchUtils.build_request_body(filters=filters,
                                                      pagination=pagination,
