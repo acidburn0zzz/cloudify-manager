@@ -46,15 +46,40 @@ from manager_rest.elasticsearch_utils import ElasticsearchUtils
 import warnings
 
 
+def rangeable(func):
+    """
+    Decorator for enabling range
+    """
+    def create_range_params(*args, **kw):
+        range_args = request.args.getlist("_range")
+        range_params = {}
+        for range_arg in range_args:
+            try:
+                range_key, range_from, range_to = \
+                    range_arg.split(',')
+            except ValueError:
+                raise ValueError('Range parameter requires 3 values')
+            range_param = {}
+            if range_from:
+                range_param['gte'] = range_from
+            if range_to:
+                range_param['lte'] = range_to
+            if range_param:
+                range_params[range_key] = range_param
+
+        return func(range_filters=range_params, *args, **kw)
+    return create_range_params
+
+
 def sortable(func):
     """
     Decorator for enabling sort
     """
     def create_sort_params(*args, **kw):
-        sort_arg = request.args.getlist("_sort")
+        sort_args = request.args.getlist("_sort")
         sort_params = \
             {k.lstrip('-+'): "desc" if k[0] == '-' else "asc"
-             for k in sort_arg}
+             for k in sort_args}
         return func(sort=sort_params, *args, **kw)
     return create_sort_params
 
@@ -658,7 +683,9 @@ class Events(resources.Events):
         return \
             '_include_logs' in request.args and request.args['_include_logs']
 
-    def _build_query(self, filters, pagination, sort, include_logs=False):
+    def _build_query(self, filters, pagination, sort, range_filters,
+                     include_logs=False):
+
         # sort by @timestamp instead of timestamp
         if 'timestamp' in sort:
             sort['@timestamp'] = sort.pop('timestamp')
@@ -673,9 +700,11 @@ class Events(resources.Events):
             if ctx_field in filters:
                 filters['context.' + ctx_field] = filters.pop(ctx_field)
 
-        return ElasticsearchUtils.build_request_body(filters=filters,
-                                                     pagination=pagination,
-                                                     sort=sort)
+        return ElasticsearchUtils.\
+            build_request_body(filters=filters,
+                               pagination=pagination,
+                               sort=sort,
+                               range_filters=range_filters)
 
     def _search_storage(self, query):
         es = resources._elasticsearch_connection()
@@ -691,9 +720,10 @@ class Events(resources.Events):
     @marshal_with(responses_v2.Event)
     @create_user_filters
     @paginate
+    @rangeable
     @sortable
     def get(self, _include=None, filters=None,
-            pagination=None, sort=None, **kwargs):
+            pagination=None, sort=None, range_filters=None, **kwargs):
         """
         List events
         """
@@ -701,6 +731,7 @@ class Events(resources.Events):
         query = self._build_query(filters=filters,
                                   pagination=pagination,
                                   sort=sort,
+                                  range_filters=range_filters,
                                   include_logs=include_logs)
         search_result = self._search_storage(query)
         events = map(lambda hit: hit['_source'], search_result['hits']['hits'])
