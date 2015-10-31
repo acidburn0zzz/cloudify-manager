@@ -57,6 +57,23 @@ class EventsTest(TestCase):
             self.assertEqual(event['type'], 'cloudify_event',
                              "Expected events only")
 
+    def test_timestamp_range(self):
+        from datetime import datetime
+        es_date_format = '%Y-%m-%dT%H:%M:%S.%f'
+        str_to_date_format = '%Y-%m-%d %H:%M:%S.%f+0000'
+        all_events = self.client.events.list()
+        first_event = all_events[0]
+        mid_event = all_events[len(all_events) / 2]
+        min_time = \
+            datetime.strptime(first_event['timestamp'], str_to_date_format)
+        max_time = \
+            datetime.strptime(mid_event['timestamp'], str_to_date_format)
+        ranged_events = \
+            self.client.events.list(
+                **{'from': min_time.strftime(es_date_format),
+                   'to': max_time.strftime(es_date_format)})
+        self.assertEquals(len(ranged_events), len(all_events) / 2)
+
     def test_sorted_events(self):
         events = self.client.events.list(_sort='-timestamp')
         self.assertGreater(len(events), 0, "No events")
