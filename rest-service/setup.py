@@ -29,7 +29,7 @@ setup(
     zip_safe=False,
     install_requires=[
         'six==1.8.0',
-        'Flask==0.10.1',
+        'Flask==1.0',
         'flask-restful==0.2.5',
         'flask-restful-swagger==0.12',
         'supervise==1.1.1',
