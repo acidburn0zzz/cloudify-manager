@@ -34,6 +34,6 @@ setup(
                 ' a riemann core with generated configuration',
     install_requires=[
         'cloudify-plugins-common==3.3a7',
-        'jinja2==2.7.2'
+        'jinja2==2.11.3'
     ],
 )
