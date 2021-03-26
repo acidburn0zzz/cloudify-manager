@@ -36,7 +36,7 @@ setup(
         'cloudify-dsl-parser==3.3a7',
         'requests==2.7.0',
         'gunicorn==18.0',
-        'PyYAML==3.10',
+        'PyYAML==5.4',
         'elasticsearch==1.6.0',
         'celery==3.1.17',
         'flask-securest==0.7',
